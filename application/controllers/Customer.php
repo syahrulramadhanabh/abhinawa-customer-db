@@ -2,7 +2,8 @@
 defined('BASEPATH') OR exit('No direct script access allowed');
 
 class customer extends CI_Controller {
-
+    private $telegram_bot_token = '7228263278:AAFPwxKRz87ZQSGW-o5wb4srQnCk9xu22Vo';
+    private $telegram_chat_id  = '-4682244113';
         public function __construct() {
             parent::__construct();
             $this->load->model('Customer_model');
@@ -12,6 +13,7 @@ class customer extends CI_Controller {
             $this->load->model('Role_model');
             $this->load->model('Update_history_model');
             $this->load->library('pagination');
+            $this->load->library('email');
         if (!$this->session->userdata('logged_in')) {
             redirect('auth');
         }
@@ -92,32 +94,36 @@ public function index() {
             $this->load->view('template/footer', $data);
         }        
         
-        public function store_customer() {
+        public function store_customer()
+        {
+            // Ambil data dari form
             $data = [
-                'customer' => $this->input->post('customer'),
-                'customer_group_id' => $this->input->post('group_id'),
-                'kdsupplier' => $this->input->post('kdsupplier'),
-                'cid_supp' => $this->input->post('cid_supp'),
-                'cid_abh' => $this->input->post('cid_abh'),
-                'no_so' => $this->upload_file('no_so'),
-                'no_sdn' => $this->upload_file('no_sdn'),
-                'topology' => $this->upload_file('topology'),
-                'service_type_id' => $this->input->post('service_type_id'),
-                'start_date' => $this->input->post('start_date'),
-                'end_date' => $this->input->post('end_date')
+                'customer'            => $this->input->post('customer'),
+                'customer_group_id'   => $this->input->post('group_id'),
+                'kdsupplier'          => $this->input->post('kdsupplier'),
+                'cid_supp'            => $this->input->post('cid_supp'),
+                'cid_abh'             => $this->input->post('cid_abh'),
+                'no_so'               => $this->upload_file('no_so'),
+                'no_sdn'              => $this->upload_file('no_sdn'),
+                'topology'            => $this->upload_file('topology'),
+                'service_type_id'     => $this->input->post('service_type_id'),
+                'start_date'          => $this->input->post('start_date'),
+                'end_date'            => $this->input->post('end_date'),
             ];
         
-            if ($this->Customer_model->insert_customer($data)) {
-                echo "Customer added successfully.";
+            // Insert dan ambil ID
+            $new_id = $this->Customer_model->insert_customer($data);
+            if ($new_id) {
+                // Kirim notifikasi untuk customer baru
+                $this->notify_new_customer($new_id);
+        
+                $this->session->set_flashdata('success', 'Customer added and notification sent.');
             } else {
-                $error = $this->db->error();
-                echo "Insert failed: " . $error['message'];
+                $this->session->set_flashdata('error', 'Failed to add customer.');
             }
         
-            // Comment out redirect for testing
-             redirect('customer/group_details/' . $data['customer_group_id']);
-        }        
-        
+            redirect('customer/group_details/' . $data['customer_group_id']);
+        } 
         
         private function upload_file($field_name) {
             $config['upload_path'] = './uploads/';
@@ -202,13 +208,143 @@ public function index() {
             redirect('customer');
         }
         public function get_service_type_description($service_type_id) {
-            // Load the service type model (make sure you have this model)
             $this->load->model('service_type_model');
             $description = $this->service_type_model->get_description_by_id($service_type_id);
-            
-            // Return the description as plain text for use in the modal
+        
             echo $description;
         }        
-                        
-    }        
+
+        public function check_service_end_dates()
+        {
+            $customers = $this->Customer_model->get_customers_with_end_date_today();
     
+            foreach ($customers as $c) {
+                $message  = "<b>🚨 Service End Today 🚨</b>\n";
+                $message .= "<b>Customer:</b> {$c->customer}\n";
+                $message .= "<b>CID:</b> {$c->cid_abh}\n";
+                $message .= "<b>Service:</b> " . $this->get_service_type_name($c->service_type_id) . "\n";
+                $message .= "<b>Ends:</b> " . date('j M Y', strtotime($c->end_date)) . "\n\n";
+                $message .= "Please take necessary actions.";
+    
+                if ($this->send_telegram($message)) {
+                    $this->log_notification($c->id, 'service_end_notification', 'Telegram sent');
+                }
+                // kalau gagal, sudah tercatat di send_telegram()
+            }
+    
+            // Redirect atau tampilkan flash
+            $this->session->set_flashdata('success', 'Service-end notifications processed.');
+            redirect('customer');
+        }
+    
+        // Kirim notifikasi terminasi untuk satu customer
+        public function notify_termination($customer_id)
+        {
+            $c = $this->Customer_model->get_customer_by_id($customer_id);
+            if (! $c) {
+                $this->session->set_flashdata('error', 'Customer not found.');
+                redirect('customer');
+                return;
+            }
+    
+            $message  = "<b>📤 Service Termination</b>\n";
+            $message .= "<b>Customer:</b> {$c->customer}\n";
+            $message .= "<b>CID:</b> {$c->cid_abh}\n";
+            $message .= "<b>Service:</b> " . $this->get_service_type_name($c->service_type_id) . "\n";
+            $message .= "<b>Start Date:</b> " . date('j M Y', strtotime($c->start_date)) . "\n";
+            $message .= "<b>End Date:</b> " . date('j M Y', strtotime($c->end_date)) . "\n";
+            $message .= "<b>Terminated Notification:</b> " . date('j M Y') . "\n\n";
+            $message .= "Please follow termination procedures.";
+    
+            if ($this->send_telegram($message)) {
+                $this->log_notification($customer_id, 'termination_notification', 'Telegram sent');
+                $this->session->set_flashdata('success', 'Termination notification sent via Telegram.');
+            } else {
+                $this->session->set_flashdata('error', 'Failed to send Telegram notification. Check logs.');
+            }
+    
+            redirect('customer/group_details/' . $c->customer_group_id);
+        }
+    
+        // Ambil nama service type berdasarkan ID
+        private function get_service_type_name($service_type_id)
+        {
+            $row = $this->db->get_where('service_types', ['id' => $service_type_id])->row();
+            return $row ? $row->service_name : 'Unknown Service';
+        }
+    
+        // Kirim pesan ke Telegram via Bot API
+        private function send_telegram($message)
+        {
+            $url = "https://api.telegram.org/bot{$this->telegram_bot_token}/sendMessage";
+            $payload = [
+                'chat_id'                  => $this->telegram_chat_id,
+                'text'                     => $message,
+                'parse_mode'               => 'HTML',
+                'disable_web_page_preview' => true,
+            ];
+    
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [
+                CURLOPT_POST           => true,
+                CURLOPT_POSTFIELDS     => $payload,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_CONNECTTIMEOUT => 5,
+                CURLOPT_TIMEOUT        => 10,
+            ]);
+    
+            $resp  = curl_exec($ch);
+            $error = curl_error($ch);
+            curl_close($ch);
+    
+            if ($error) {
+                log_message('error', "Telegram curl error: $error");
+                return false;
+            }
+    
+            $json = json_decode($resp, true);
+            if (empty($json['ok'])) {
+                log_message('error', 'Telegram API error: ' . print_r($json, true));
+                return false;
+            }
+    
+            return true;
+        }
+    
+        // Simpan log notifikasi ke database
+        private function log_notification($customer_id, $notification_type, $subject = null)
+        {
+            $this->db->insert('notification_logs', [
+                'customer_id'       => $customer_id,
+                'notification_type' => $notification_type,
+                'subject'           => $subject,
+                'sent_at'           => date('Y-m-d H:i:s'),
+                'sent_by'           => $this->session->userdata('user_id'),
+            ]);
+        }
+    
+        // Kirim notifikasi untuk customer baru
+        private function notify_new_customer($customer_id)
+        {
+            $c = $this->Customer_model->get_customer_by_id($customer_id);
+            if (! $c) {
+                log_message('error', "notify_new_customer(): customer ID {$customer_id} not found");
+                return;
+            }
+    
+            $message  = "<b>🆕 New Customer Added</b>\n";
+            $message .= "<b>Customer:</b> {$c->customer}\n";
+            $message .= "<b>CID:</b> {$c->cid_abh}\n";
+            $message .= "<b>Group:</b> {$c->group_id}\n";
+            $message .= "<b>Service:</b> " . $this->get_service_type_name($c->service_type_id) . "\n";
+            $message .= "<b>Start Date:</b> " . date('j M Y', strtotime($c->start_date)) . "\n";
+            $message .= "<b>End Date:</b> " . date('j M Y', strtotime($c->end_date)) . "\n\n";
+            $message .= "Please review the new customer entry.";
+    
+            if ($this->send_telegram($message)) {
+                $this->log_notification($customer_id, 'new_customer_notification', 'Telegram sent');
+            } else {
+                log_message('error', "New-customer Telegram send failed for ID {$customer_id}");
+            }
+        }
+    } 
