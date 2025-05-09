@@ -14,6 +14,8 @@ class customer extends CI_Controller {
             $this->load->model('Update_history_model');
             $this->load->library('pagination');
             $this->load->library('email');
+            $this->load->library('email', $this->config->item('email'));
+
         if (!$this->session->userdata('logged_in')) {
             redirect('auth');
         }
@@ -161,39 +163,46 @@ public function index() {
         }
         
         public function update_customer($customer_id) {
-            // Check if the user has the required role
+            // Cek role
             if ($this->session->userdata('role_id') != 1) {
                 $this->session->set_flashdata('error', 'Unauthorized access.');
                 redirect('customer/index');
                 return;
             }
         
+            // Ambil data lama untuk cek perubahan status
+            $old = $this->Customer_model->get_customer_by_id($customer_id);
+            $old_status = $old->status;
+        
+            // Siapkan data baru
             $data = [
-                'customer' => $this->input->post('customer'),
-                'kdsupplier' => $this->input->post('kdsupplier'),
-                'cid_supp' => $this->input->post('cid_supp'),
+                'customer'        => $this->input->post('customer'),
+                'kdsupplier'      => $this->input->post('kdsupplier'),
+                'cid_supp'        => $this->input->post('cid_supp'),
                 'service_type_id' => $this->input->post('service_type_id'),
-                'start_date' => $this->input->post('start_date'),
-                'end_date' => $this->input->post('end_date'),
-                'status' => $this->input->post('status'),
+                'start_date'      => $this->input->post('start_date'),
+                'end_date'        => $this->input->post('end_date'),
+                'status'          => $this->input->post('status'),
             ];
         
-            // Handle file uploads
-            if (!empty($_FILES['no_so']['name'])) {
-                $data['no_so'] = $this->upload_file('no_so');
-            }
-            if (!empty($_FILES['no_sdn']['name'])) {
-                $data['no_sdn'] = $this->upload_file('no_sdn');
-            }
-            if (!empty($_FILES['topology']['name'])) {
-                $data['topology'] = $this->upload_file('topology');
+            // File upload seperti sebelumnya...
+            if (!empty($_FILES['no_so']['name']))      $data['no_so']   = $this->upload_file('no_so');
+            if (!empty($_FILES['no_sdn']['name']))     $data['no_sdn']  = $this->upload_file('no_sdn');
+            if (!empty($_FILES['topology']['name']))   $data['topology']= $this->upload_file('topology');
+        
+            // Update di database
+            $this->Customer_model->update_customer($customer_id, $data);
+        
+            // **Notifikasi jika status berubah**
+            $new_status = $data['status'];
+            if ($old_status != $new_status) {
+                $this->notify_status_change($customer_id, $old_status, $new_status);
             }
         
-            
-            $this->Customer_model->update_customer($customer_id, $data);
             $this->session->set_flashdata('success', 'Customer updated successfully.');
             redirect('customer/group_details/' . $this->input->post('group_id'));
         }
+        
         
         public function delete_customer($customer_id) {
             // Check if the user has the required role
@@ -213,7 +222,17 @@ public function index() {
         
             echo $description;
         }        
-
+        private function get_service_type_name($service_type_id)
+        {
+            $row = $this->db
+                        ->select('service_name')
+                        ->from('service_types')
+                        ->where('id', $service_type_id)
+                        ->get()
+                        ->row();
+        
+            return $row ? $row->service_name : 'Unknown Service';
+        }
         public function check_service_end_dates()
         {
             $customers = $this->Customer_model->get_customers_with_end_date_today();
@@ -242,36 +261,78 @@ public function index() {
         {
             $c = $this->Customer_model->get_customer_by_id($customer_id);
             if (! $c) {
-                $this->session->set_flashdata('error', 'Customer not found.');
-                redirect('customer');
-                return;
+                show_error('Customer not found', 404);
             }
-    
-            $message  = "<b>📤 Service Termination</b>\n";
-            $message .= "<b>Customer:</b> {$c->customer}\n";
-            $message .= "<b>CID:</b> {$c->cid_abh}\n";
-            $message .= "<b>Service:</b> " . $this->get_service_type_name($c->service_type_id) . "\n";
-            $message .= "<b>Start Date:</b> " . date('j M Y', strtotime($c->start_date)) . "\n";
-            $message .= "<b>End Date:</b> " . date('j M Y', strtotime($c->end_date)) . "\n";
-            $message .= "<b>Terminated Notification:</b> " . date('j M Y') . "\n\n";
-            $message .= "Please follow termination procedures.";
-    
-            if ($this->send_telegram($message)) {
-                $this->log_notification($customer_id, 'termination_notification', 'Telegram sent');
-                $this->session->set_flashdata('success', 'Termination notification sent via Telegram.');
-            } else {
-                $this->session->set_flashdata('error', 'Failed to send Telegram notification. Check logs.');
-            }
-    
-            redirect('customer/group_details/' . $c->customer_group_id);
-        }
-    
-        // Ambil nama service type berdasarkan ID
-        private function get_service_type_name($service_type_id)
-        {
-            $row = $this->db->get_where('service_types', ['id' => $service_type_id])->row();
-            return $row ? $row->service_name : 'Unknown Service';
-        }
+            $noticeDate = date('j F Y');
+            // Bangun HTML message dengan end_date dari database
+            $html_message = <<<HTML
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            @import url("https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap");
+            body { font-family: "Poppins", sans-serif; background:#f4f6f8; margin:0; padding:20px; }
+            .container { background:#fff; max-width:600px; margin:auto; padding:30px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.1); }
+            .header { text-align:center; margin-bottom:30px; }
+            .header h1 { font-weight:600; color:#333; margin:0; }
+            .header p { color:#666; margin-top:8px; }
+            p, ul { color:#555; line-height:1.6; }
+            ul { margin-left:20px; margin-bottom:16px; }
+            .footer { font-size:14px; color:#888; text-align:center; margin-top:30px; }
+            a { color:#007bff; text-decoration:none; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>Service Termination Notice</h1>
+              <p><em>One-Month Advance Notification</em></p>
+            </div>
+        
+            <p>Dear <strong>{$c->customer}</strong>,</p>
+        
+            <p>
+              In accordance with our service agreement between <strong>PT Abhinawa Sumberdaya Asia</strong> and your organization, please consider this letter as a formal one-month notice that your service will be terminated effective <strong>{$c->end_date}</strong>. We kindly request that you complete any necessary data migrations, backups, or final reconciliations prior to this date to ensure a smooth transition.
+            </p>
+        
+            <p><strong>Termination Details:</strong></p>
+            <ul>
+              <li><strong>Customer Name:</strong> {$c->customer}</li>
+              <li><strong>CID:</strong> {$c->cid_abh}</li>
+              <li><strong>Group ID:</strong> {$c->customer_group_id}</li>
+              <li><strong>Service:</strong> {$this->get_service_type_name($c->service_type_id)}</li>
+              <li><strong>Notice Date:</strong> {$noticeDate}</li>
+              <li><strong>Effective Termination Date:</strong> {$c->end_date}</li>
+            </ul>
+        
+            <p>
+              If you have any questions or require further assistance, please do not hesitate to contact our support team at <a href="mailto:noc@abhinawa.co.id">noc@abhinawa.co.id</a> or call us at (021) 1234-5678.
+            </p>
+        
+            <p>Thank you for your attention and for the opportunity to serve you.</p>
+        
+            <p>
+              Sincerely,<br>
+              <strong>Customer Success Team<br>PT Abhinawa Sumberdaya Asia</strong>
+            </p>
+        
+            <div class="footer">
+              PT Abhinawa Sumberdaya Asia • Menara Kadin Indonesia, Jl. H. R. Rasuna Said, RT.1/RW.2, Kuningan, Kuningan Tim., Kecamatan Setiabudi, Kota Jakarta Selatan, Daerah Khusus Ibukota Jakarta 12950 • Email: noc@abhinawa.co.id • Telp: (021) 1234-5678
+            </div>
+          </div>
+        </body>
+        </html>
+        HTML;
+        
+            // Kirim email + Telegram
+            $this->send_email_and_notify(
+                "One-Month Service Termination Notice – {$c->customer}",
+                $html_message,
+                'termination_notification',
+                $customer_id
+            );
+        }        
     
         // Kirim pesan ke Telegram via Bot API
         private function send_telegram($message)
@@ -325,26 +386,145 @@ public function index() {
     
         // Kirim notifikasi untuk customer baru
         private function notify_new_customer($customer_id)
-        {
-            $c = $this->Customer_model->get_customer_by_id($customer_id);
-            if (! $c) {
-                log_message('error', "notify_new_customer(): customer ID {$customer_id} not found");
-                return;
-            }
-    
-            $message  = "<b>🆕 New Customer Added</b>\n";
-            $message .= "<b>Customer:</b> {$c->customer}\n";
-            $message .= "<b>CID:</b> {$c->cid_abh}\n";
-            $message .= "<b>Group:</b> {$c->group_id}\n";
-            $message .= "<b>Service:</b> " . $this->get_service_type_name($c->service_type_id) . "\n";
-            $message .= "<b>Start Date:</b> " . date('j M Y', strtotime($c->start_date)) . "\n";
-            $message .= "<b>End Date:</b> " . date('j M Y', strtotime($c->end_date)) . "\n\n";
-            $message .= "Please review the new customer entry.";
-    
-            if ($this->send_telegram($message)) {
-                $this->log_notification($customer_id, 'new_customer_notification', 'Telegram sent');
-            } else {
-                log_message('error', "New-customer Telegram send failed for ID {$customer_id}");
-            }
-        }
-    } 
+{
+    $c = $this->Customer_model->get_customer_by_id($customer_id);
+    if (! $c) {
+        log_message('error', "notify_new_customer(): customer ID {$customer_id} not found");
+        return;
+    }
+
+    $html  = "<h2>🆕 New Customer Added</h2>";
+    $html .= "<p><strong>Customer:</strong> {$c->customer}<br>";
+    $html .= "<strong>CID:</strong> {$c->cid_abh}<br>";
+    $html .= "<strong>Group:</strong> {$c->customer_group_id}<br>";
+    $html .= "<strong>Service:</strong> " . $this->get_service_type_name($c->service_type_id) . "<br>";
+    $html .= "<strong>Start Date:</strong> " . date('j M Y', strtotime($c->start_date)) . "<br>";
+    $html .= "<strong>End Date:</strong> " . date('j M Y', strtotime($c->end_date)) . "</p>";
+
+    // Kirim email & Telegram
+    $this->send_email_and_notify(
+        'New Customer Notification',
+        $html,
+        'new_customer_notification',
+        $customer_id
+    );
+}
+public function test_email()
+{
+    $to_param = $this->input->get('to');
+
+    if ($to_param) {
+        $recipients = array_map('trim', explode(',', $to_param));
+    } else {
+        $recipients = [
+            'syahrul@abhinawa.co.id',
+            'anis@abhinawa.co.id',
+            'daulay@abhinawa.co.id',
+        ];
+    }
+
+    // Siapkan email
+    $this->email->clear();
+    $this->email->from('syahrul@c-tech.id', 'System Administrator - Abhinawa');
+    $this->email->to($recipients);  
+    $this->email->subject('Abhinawa Customer Database - Test Email Delivery - ' . date('Y-m-d H:i:s'));
+    $this->email->message(
+        '<p>Ini email test untuk memverifikasi konfigurasi SMTP.</p>' .
+        '<p>Waktu kirim: ' . date('Y-m-d H:i:s') . '</p>'
+    );
+
+    // Kirim & tampilkan hasil
+    if ($this->email->send()) {
+        echo "<h2 style='color:green;'>SUCCESS</h2>";
+        echo "<p>Email berhasil dikirim ke:<br><strong>"
+           . implode(', ', $recipients)
+           . "</strong></p>";
+    } else {
+        echo "<h2 style='color:red;'>FAILURE</h2>";
+        echo "<pre>"
+           . htmlspecialchars($this->email->print_debugger(
+               ['headers','subject','body','message']
+             ))
+           . "</pre>";
+    }
+}
+/**
+ * Kirim notifikasi email & Telegram saat status customer berubah
+ */
+private function notify_status_change($customer_id, $old_status, $new_status)
+{
+    // Label human‐readable untuk tiap status
+    $labels = [
+        1 => 'Active',
+        2 => 'Suspend',
+        3 => 'Inactive',
+        4 => 'Terminated',
+    ];
+
+    $c = $this->Customer_model->get_customer_by_id($customer_id);
+    if (!$c) {
+        log_message('error', "notify_status_change(): ID {$customer_id} not found");
+        return;
+    }
+
+    $old_label = isset($labels[$old_status]) ? $labels[$old_status] : 'Unknown';
+    $new_label = isset($labels[$new_status]) ? $labels[$new_status] : 'Unknown';
+
+    // Buat pesan HTML
+    $html  = "<h2>🔄 Customer Status Changed</h2>";
+    $html .= "<p><strong>Customer:</strong> {$c->customer}<br>";
+    $html .= "<strong>CID:</strong> {$c->cid_abh}<br>";
+    $html .= "<strong>Group:</strong> {$c->customer_group_id}<br>";
+    $html .= "<strong>Old Status:</strong> {$old_label}<br>";
+    $html .= "<strong>New Status:</strong> {$new_label}<br>";
+    $html .= "<strong>Time:</strong> " . date('j M Y H:i:s') . "</p>";
+
+    // Subject untuk email/TG
+    $subject = "Customer {$c->customer} Status: {$old_label} → {$new_label}";
+
+    // Kirim via helper send_email_and_notify
+    $this->send_email_and_notify(
+        $subject,
+        $html,
+        'status_change_notification',
+        $customer_id
+    );
+}
+private function send_email_and_notify($subject, $html_message, $notification_type, $customer_id = null)
+{
+    // 1. Kirim email
+    $this->email->clear();
+    $this->email->from('syahrul@c-tech.id', '[Development] - Abhinawa Customer Notification');
+    $this->email->to([
+        'syahrul@abhinawa.co.id',
+        'daulay@abhinawa.co.id',
+        'arif@abhinawa.co.id',
+        'anis@abhinawa.co.id',
+        'noc@abhinawa.co.id',
+    ]);
+    $this->email->subject($subject);
+    $this->email->message($html_message);
+
+    if ( ! $this->email->send()) {
+        // jika gagal, kirim Telegram sebagai fallback
+        $debug = $this->email->print_debugger(['headers','subject','body']);
+        $this->send_telegram("<b>🚨 EMAIL ERROR 🚨</b>\nSubject: {$subject}\n\n" . htmlentities($debug));
+        $log_subject = 'email_error';
+    } else {
+        // jika sukses, kirim Telegram konfirmasi
+        $this->send_telegram("<b>✅ EMAIL SENT ✅</b>\nSubject: {$subject}");
+        $log_subject = 'email_success';
+    }
+
+    // 2. Simpan log ke database (jika customer_id diberikan)
+    if ($customer_id !== null) {
+        $this->db->insert('notification_logs', [
+            'customer_id'       => $customer_id,
+            'notification_type' => $notification_type,
+            'subject'           => $log_subject,
+            'sent_at'           => date('Y-m-d H:i:s'),
+            'sent_by'           => $this->session->userdata('user_id'),
+        ]);
+    }
+} 
+}

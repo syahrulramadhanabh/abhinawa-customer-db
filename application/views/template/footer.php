@@ -43,6 +43,62 @@
     </div>
   </div>
 </div>
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  // Inisialisasi Modal & Toast (Bootstrap 5)
+  const terminationModalEl = document.getElementById('terminationModal');
+  const terminationModal   = new bootstrap.Modal(terminationModalEl);
+  const toastEl            = document.getElementById('emailToast');
+  const toast              = new bootstrap.Toast(toastEl);
+
+  let currentCustomerId = null;
+
+  // Buka modal saat tombol diklik
+  document.querySelectorAll('.btn-notify-termination').forEach(btn => {
+    btn.addEventListener('click', function(){
+      currentCustomerId = this.dataset.id;
+      const custName    = this.dataset.customer;
+      document.getElementById('terminationModalLabel').innerText = 'Notify Termination: ' + custName;
+      document.getElementById('terminationModalBody').innerText  =
+        `Kirim email notifikasi terminasi untuk "${custName}"?`;
+      terminationModal.show();
+    });
+  });
+
+  // Konfirmasi di modal
+  document.getElementById('confirmTerminateBtn').addEventListener('click', function(){
+    const btn = this;
+    btn.disabled = true;
+    btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Mengirim...`;
+
+    fetch(`<?= base_url('customer/notify_termination/') ?>${currentCustomerId}`, {
+      headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(res => res.json())
+    .then(data => {
+      terminationModal.hide();
+      btn.disabled = false;
+      btn.innerHTML = 'Kirim Notifikasi';
+
+      // Toast sukses
+      toastEl.classList.replace('bg-danger','bg-success');
+      document.getElementById('emailToastBody').innerText = data.message;
+      toast.show();
+    })
+    .catch(err => {
+      console.error(err);
+      terminationModal.hide();
+      btn.disabled = false;
+      btn.innerHTML = 'Kirim Notifikasi';
+
+      // Toast error
+      toastEl.classList.replace('bg-success','bg-danger');
+      document.getElementById('emailToastBody').innerText = 'Error mengirim notifikasi';
+      toast.show();
+    });
+  });
+});
+</script>
 
 <script src="<?= base_url('assets/libs/jquery/dist/jquery.min.js'); ?>"></script>
 <script src="<?= base_url('assets/libs/bootstrap/dist/js/bootstrap.bundle.min.js'); ?>"></script>

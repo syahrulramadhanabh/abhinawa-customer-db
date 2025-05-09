@@ -8,8 +8,9 @@
       <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
   <?php endif; ?>
+
   <!-- Button to Open Add Service Type Modal -->
-  <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addServiceTypeModal">
+  <button type="button" class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addServiceTypeModal">
     Add New Service Type
   </button>
   <br>

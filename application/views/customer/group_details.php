@@ -10,17 +10,24 @@
     <h2 class="mb-4 text-center">Customers in Group</h2>
 
     <?php if ($role_id == 1): ?>
-        <div class="mb-3">
-            <a href="<?= base_url('customer/add_customer/' . $group_id) ?>" class="btn btn-success">
-                <i class="fa fa-plus"></i> Add New Customer
-            </a>
-            <a href="<?= base_url('customer/check_service_end_dates') ?>"
-               class="btn btn-primary"
-               onclick="return confirm('Send end-of-service notifications for all due customers?');">
-               <i class="fa fa-envelope"></i> Send All End Notifications
-            </a>
-        </div>
-    <?php endif; ?>
+    <div class="mb-3">
+        <a href="<?= base_url('customer/add_customer/' . $group_id) ?>" class="btn btn-success">
+            <i class="fa fa-plus"></i> Add New Customer
+        </a>
+        <a href="<?= base_url('customer/check_service_end_dates') ?>"
+           class="btn btn-primary"
+           onclick="return confirm('Send end-of-service notifications for all due customers?');">
+           <i class="fa fa-envelope"></i> Send All End Notifications
+        </a>
+        <!-- Tombol Manual Test Email -->
+        <a href="<?= base_url('customer/test_email') ?>"
+           class="btn btn-info"
+           onclick="return confirm('Send test email?');">
+           <i class="fa fa-paper-plane"></i> Test Email
+        </a>
+    </div>
+<?php endif; ?>
+
 
     <?php if (!empty($customers)): ?>
         <?php
@@ -138,11 +145,13 @@
 
                             <?php if ($role_id == 1 || $role_id == 2): ?>
                                 <td>
-                                    <a href="<?= base_url('customer/notify_termination/' . $cust->id) ?>"
-                                       class="btn btn-warning btn-sm"
-                                       onclick="return confirm('Notify termination for <?= htmlspecialchars($cust->customer) ?>?');">
-                                        <i class="fa fa-envelope"></i>
-                                    </a>
+                                <button type="button"
+                                                    class="btn btn-warning btn-sm btn-notify-termination"
+                                                    data-id="<?= $cust->id ?>"
+                                                    data-customer="<?= htmlspecialchars($cust->customer) ?>"
+                                                    title="Notify Termination">
+                                            <i class="fa fa-envelope"></i>
+                                 </button>
                                     <a href="<?= base_url('customer/edit_customer/' . $cust->id) ?>"
                                        class="btn btn-secondary btn-sm">
                                         <i class="fa fa-edit"></i>
@@ -183,6 +192,36 @@
         </div>
     </div>
 </div>
+<!-- 1) Modal Confirm Notify -->
+<div class="modal fade" id="terminationModal" tabindex="-1" aria-labelledby="terminationModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-warning text-dark">
+        <h5 class="modal-title" id="terminationModalLabel">Confirm Termination</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p id="terminationModalBody">Are you sure want to send termination notification?</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="confirmTerminateBtn" class="btn btn-warning">
+          Kirim Notifikasi
+        </button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 2) Toast Container -->
+<div class="toast-container position-fixed top-0 end-0 p-3">
+  <div id="emailToast" class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="d-flex">
+      <div class="toast-body" id="emailToastBody"></div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+    </div>
+  </div>
+</div>
 
 <script>
 function loadFile(url, title) {
@@ -202,4 +241,54 @@ function loadServiceTypeDescription(id, name) {
             document.getElementById('fileContent').innerHTML = '<p class="text-danger">Failed to load description.</p>';
         });
 }
+const terminationModalEl = document.getElementById('terminationModal');
+  const terminationModal   = new bootstrap.Modal(terminationModalEl);
+  const toastEl            = document.getElementById('emailToast');
+  const toastBody          = document.getElementById('emailToastBody');
+  const toast              = new bootstrap.Toast(toastEl);
+
+  let currentCustomerId = null;
+
+  // Buka modal saat tombol diklik
+  document.querySelectorAll('.btn-notify-termination').forEach(btn => {
+    btn.addEventListener('click', () => {
+      currentCustomerId = btn.dataset.id;
+      const custName    = btn.dataset.customer;
+      document.getElementById('terminationModalLabel').innerText = 'Notify Termination: ' + custName;
+      document.getElementById('terminationModalBody').innerText  = `Kirim email notifikasi terminasi untuk "${custName}"?`;
+      terminationModal.show();
+    });
+  });
+
+  // Saat user konfirmasi di modal
+  document.getElementById('confirmTerminateBtn').addEventListener('click', function() {
+    this.disabled = true;
+    this.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Mengirim...`;
+
+    fetch(`<?= base_url('customer/notify_termination/') ?>${currentCustomerId}`, {
+      method: 'POST',
+      headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(res => res.json())
+    .then(data => {
+      terminationModal.hide();
+      this.disabled = false;
+      this.innerHTML = 'Kirim Notifikasi';
+
+      // Show success toast
+      toastEl.classList.replace('bg-danger','bg-success');
+      toastBody.innerText = data.message;
+      toast.show();
+    })
+    .catch(() => {
+      terminationModal.hide();
+      this.disabled = false;
+      this.innerHTML = 'Kirim Notifikasi';
+
+      // Show error toast
+      toastEl.classList.replace('bg-success','bg-danger');
+      toastBody.innerText = 'Error mengirim notifikasi';
+      toast.show();
+    });
+  });
 </script>
