@@ -70,7 +70,7 @@ class Supplier extends CI_Controller {
             $this->db->insert('suppliers', $data);
 
             // Redirect to the supplier list or a success page
-            redirect('supplier/list');
+            redirect('index.php/supplier/list');
         }
     }
     public function edit($id) {

@@ -385,7 +385,7 @@ public function index() {
         }
     
         // Kirim notifikasi untuk customer baru
-        private function notify_new_customer($customer_id)
+private function notify_new_customer($customer_id)
 {
     $c = $this->Customer_model->get_customer_by_id($customer_id);
     if (! $c) {
@@ -393,22 +393,76 @@ public function index() {
         return;
     }
 
-    $html  = "<h2>🆕 New Customer Added</h2>";
-    $html .= "<p><strong>Customer:</strong> {$c->customer}<br>";
-    $html .= "<strong>CID:</strong> {$c->cid_abh}<br>";
-    $html .= "<strong>Group:</strong> {$c->customer_group_id}<br>";
-    $html .= "<strong>Service:</strong> " . $this->get_service_type_name($c->service_type_id) . "<br>";
-    $html .= "<strong>Start Date:</strong> " . date('j M Y', strtotime($c->start_date)) . "<br>";
-    $html .= "<strong>End Date:</strong> " . date('j M Y', strtotime($c->end_date)) . "</p>";
+    // Styled notification with Poppins font and brand colors
+    $html  = '<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>New Customer Onboarded</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: "Poppins", sans-serif;
+            background-color: #f4f6f8;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+        .card {
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+            max-width: 600px;
+            margin: 0 auto;
+            overflow: hidden;
+        }
+        .card-header {
+            background-color: #2E86C1;
+            color: #fff;
+            padding: 16px 20px;
+            font-size: 20px;
+            font-weight: 600;
+        }
+        .card-body {
+            padding: 20px;
+        }
+        .card-body p {
+            margin: 12px 0;
+            line-height: 1.5;
+        }
+        .label {
+            color: #2E86C1;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="card-header">
+            🎉 New Customer Onboarded
+        </div>
+        <div class="card-body">
+            <p>New customer onboarded under <span class="label">Group ' . htmlspecialchars($c->customer_group_id) . '</span>. Let’s give them our best!</p>
+            <p><span class="label">SID:</span> ' . htmlspecialchars($c->cid_abh) . '</p>
+            <p><span class="label">Service:</span> ' . htmlspecialchars($this->get_service_type_name($c->service_type_id)) . '</p>
+            <p><span class="label">Start Date:</span> ' . date('j F Y', strtotime($c->start_date)) . '</p>
+            <p><span class="label">End Date:</span> ' . date('j F Y', strtotime($c->end_date)) . '</p>
+            <p>Team, let’s stay sharp and ready to support. If any issues arise, address them promptly. Let’s keep up the great work! 💪</p>
+        </div>
+    </div>
+</body>
+</html>';
 
-    // Kirim email & Telegram
     $this->send_email_and_notify(
-        'New Customer Notification',
+        '🆕 New Customer Onboarded – ' . htmlspecialchars($c->customer),
         $html,
         'new_customer_notification',
         $customer_id
     );
 }
+
+
+
 public function test_email()
 {
     $to_param = $this->input->get('to');
@@ -433,7 +487,6 @@ public function test_email()
         '<p>Waktu kirim: ' . date('Y-m-d H:i:s') . '</p>'
     );
 
-    // Kirim & tampilkan hasil
     if ($this->email->send()) {
         echo "<h2 style='color:green;'>SUCCESS</h2>";
         echo "<p>Email berhasil dikirim ke:<br><strong>"
@@ -448,12 +501,9 @@ public function test_email()
            . "</pre>";
     }
 }
-/**
- * Kirim notifikasi email & Telegram saat status customer berubah
- */
+
 private function notify_status_change($customer_id, $old_status, $new_status)
 {
-    // Label human‐readable untuk tiap status
     $labels = [
         1 => 'Active',
         2 => 'Suspend',
@@ -470,7 +520,141 @@ private function notify_status_change($customer_id, $old_status, $new_status)
     $old_label = isset($labels[$old_status]) ? $labels[$old_status] : 'Unknown';
     $new_label = isset($labels[$new_status]) ? $labels[$new_status] : 'Unknown';
 
-    // Buat pesan HTML
+    // If status is changed to Suspend, send a formal suspension notice
+    if ($new_status === 2) {
+        $noticeDate     = date('j F Y');                        // e.g. 14 May 2025
+        $effectiveDate  = date('Y-m-d', strtotime('+1 day'));   // e.g. 2025-05-15
+
+        $subject = "Service Suspension Notice – " . htmlspecialchars($c->customer);
+
+        $html  = '<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Service Suspension Notice</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: "Poppins", sans-serif;
+      background-color: #f4f6f8;
+      color: #333;
+      padding: 20px;
+      margin: 0;
+    }
+    .container {
+      background: #fff;
+      max-width: 600px;
+      margin: 0 auto;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+    .header {
+      background-color: #E74C3C;
+      color: #fff;
+      padding: 16px;
+      font-size: 18px;
+      font-weight: 600;
+    }
+    .body {
+      padding: 20px;
+      line-height: 1.6;
+    }
+    .body p {
+      margin: 12px 0;
+    }
+    .details {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+    }
+    .details th,
+    .details td {
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      text-align: left;
+    }
+    .details th {
+      background-color: #f0f0f0;
+      font-weight: 600;
+    }
+    .footer {
+      padding: 16px 20px;
+      background-color: #f4f6f8;
+      text-align: center;
+      font-size: 14px;
+      color: #777;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      Service Suspension Notice
+    </div>
+    <div class="body">
+      <p>Dear ' . htmlspecialchars($c->customer) . ',</p>
+
+      <p>In accordance with our service agreement between PT Abhinawa Sumberdaya Asia and your organization, we regret to inform you that your service will be <strong>temporarily suspended</strong> effective <strong>' . $effectiveDate . '</strong>.</p>
+
+      <p>Please review the details below:</p>
+
+      <table class="details">
+        <tr>
+          <th>Customer Name</th>
+          <td>' . htmlspecialchars($c->customer) . '</td>
+        </tr>
+        <tr>
+          <th>CID</th>
+          <td>' . htmlspecialchars($c->cid_abh) . '</td>
+        </tr>
+        <tr>
+          <th>Group ID</th>
+          <td>' . htmlspecialchars($c->customer_group_id) . '</td>
+        </tr>
+        <tr>
+          <th>Service</th>
+          <td>' . htmlspecialchars($this->get_service_type_name($c->service_type_id)) . '</td>
+        </tr>
+        <tr>
+          <th>Notice Date</th>
+          <td>' . $noticeDate . '</td>
+        </tr>
+        <tr>
+          <th>Effective Suspension Date</th>
+          <td>' . $effectiveDate . '</td>
+        </tr>
+      </table>
+
+      <p>To avoid further disruptions, we kindly advise you to reach out to our Sales Team to resolve any outstanding issues or to discuss available options. You can contact them at <a href="mailto:sales@abhinawa.co.id">sales@abhinawa.co.id</a> or call (021) 5678-9101.</p>
+
+      <p>For technical support, please contact <a href="mailto:noc@abhinawa.co.id">noc@abhinawa.co.id</a> or (021) 1234-5678.</p>
+
+      <p>Thank you for your attention and understanding.</p>
+
+      <p>Sincerely,<br>
+         Customer Success Team<br>
+         PT Abhinawa Sumberdaya Asia
+      </p>
+    </div>
+    <div class="footer">
+      &copy; ' . date('Y') . ' PT Abhinawa Sumberdaya Asia. All rights reserved.
+    </div>
+  </div>
+</body>
+</html>';
+
+        $this->send_email_and_notify(
+            $subject,
+            $html,
+            'status_change_notification',
+            $customer_id
+        );
+
+        return;
+    }
+
+    // Fallback for other status changes
     $html  = "<h2>🔄 Customer Status Changed</h2>";
     $html .= "<p><strong>Customer:</strong> {$c->customer}<br>";
     $html .= "<strong>CID:</strong> {$c->cid_abh}<br>";
@@ -479,10 +663,8 @@ private function notify_status_change($customer_id, $old_status, $new_status)
     $html .= "<strong>New Status:</strong> {$new_label}<br>";
     $html .= "<strong>Time:</strong> " . date('j M Y H:i:s') . "</p>";
 
-    // Subject untuk email/TG
     $subject = "Customer {$c->customer} Status: {$old_label} → {$new_label}";
 
-    // Kirim via helper send_email_and_notify
     $this->send_email_and_notify(
         $subject,
         $html,
@@ -490,6 +672,7 @@ private function notify_status_change($customer_id, $old_status, $new_status)
         $customer_id
     );
 }
+
 private function send_email_and_notify($subject, $html_message, $notification_type, $customer_id = null)
 {
     // 1. Kirim email
@@ -498,9 +681,9 @@ private function send_email_and_notify($subject, $html_message, $notification_ty
     $this->email->to([
         'syahrul@abhinawa.co.id',
         'daulay@abhinawa.co.id',
-        'arif@abhinawa.co.id',
-        'anis@abhinawa.co.id',
-        'noc@abhinawa.co.id',
+        'yuniar@abhinawa.co.id',
+        'aulia.putri@abhinawa.co.id',
+        'toni@abhinawa.co.id',
     ]);
     $this->email->subject($subject);
     $this->email->message($html_message);

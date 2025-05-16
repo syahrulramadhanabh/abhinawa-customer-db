@@ -21,21 +21,21 @@
 
         <!-- CID Supplier Field -->
         <div class="mb-3">
-            <label for="cid_supp" class="form-label">CID Supplier</label>
+            <label for="cid_supp" class="form-label">SID Supplier</label>
             <select class="form-control" name="cid_supp" required>
                 <?php if (!empty($unused_cid_suppliers)): ?>
                     <?php foreach ($unused_cid_suppliers as $cid_supplier): ?>
                         <option value="<?= $cid_supplier->cid_supplier; ?>"><?= $cid_supplier->cid_supplier; ?></option>
                     <?php endforeach; ?>
                 <?php else: ?>
-                    <option value="">No available CID suppliers</option>
+                    <option value="">No available SID suppliers</option>
                 <?php endif; ?>
             </select>
         </div>
 
         <!-- CID Abh Field -->
         <div class="mb-3">
-            <label for="cid_abh" class="form-label">CID Customer</label>
+            <label for="cid_abh" class="form-label">SID Customer</label>
             <input type="text" class="form-control" name="cid_abh" required>
         </div>
 
