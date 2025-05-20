@@ -11,7 +11,7 @@
 
     <?php if ($role_id == 1): ?>
     <div class="mb-3">
-        <a href="<?= base_url('customer/add_customer/' . $group_id) ?>" class="btn btn-success">
+        <a href="<?= base_url('index.php/customer/add_customer/' . $group_id) ?>" class="btn btn-success">
             <i class="fa fa-plus"></i> Add New Customer
         </a>
         <a href="<?= base_url('customer/check_service_end_dates') ?>"
@@ -152,11 +152,11 @@
                                                     title="Notify Termination">
                                             <i class="fa fa-envelope"></i>
                                  </button>
-                                    <a href="<?= base_url('customer/edit_customer/' . $cust->id) ?>"
+                                    <a href="<?= base_url('index.php/customer/edit_customer/' . $cust->id) ?>"
                                        class="btn btn-secondary btn-sm">
                                         <i class="fa fa-edit"></i>
                                     </a>
-                                    <a href="<?= base_url('customer/delete_customer/' . $cust->id) ?>"
+                                    <a href="<?= base_url('index.php/customer/delete_customer/' . $cust->id) ?>"
                                        class="btn btn-danger btn-sm"
                                        onclick="return confirm('Delete <?= htmlspecialchars($cust->customer) ?>?');">
                                         <i class="fa fa-trash"></i>

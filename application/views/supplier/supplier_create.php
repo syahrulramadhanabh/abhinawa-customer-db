@@ -1,6 +1,6 @@
 <div class="container-fluid">
     <h2>Create New Supplier</h2>
-    <form action="<?= site_url('supplier/store') ?>" method="post">
+    <form action="<?= site_url('index.php/supplier/store') ?>" method="post">
         <div class="form-group">
             <label for="kdsupplier">Kode Supplier</label>
             <input type="text" name="kdsupplier" id="kdsupplier" class="form-control" required>

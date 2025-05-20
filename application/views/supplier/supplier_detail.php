@@ -8,7 +8,7 @@ $role_id = $this->session->userdata('role_id'); // Get role_id from session
             <h5>Details for Supplier: <?= $supplier->nama_supplier ?></h5>
         </div>
         <?php if (in_array($role_id, [1, 2])): ?>
-            <a href="<?= base_url('supplier/add_supplier_detail/'. $supplier->kdsupplier); ?>" class="btn btn-primary mb-3">Add New Detail Supplier</a>
+            <a href="<?= base_url('index.php/supplier/add_supplier_detail/'. $supplier->kdsupplier); ?>" class="btn btn-primary mb-3">Add New Detail Supplier</a>
         <?php endif; ?>
         <div class="card-body">
             <div class="table-responsive">

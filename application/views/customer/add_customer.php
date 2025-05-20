@@ -1,6 +1,6 @@
 <div class="container-fluid">
     <h2>Add New Customer</h2>
-    <form action="<?= base_url('customer/store_customer'); ?>" method="post" enctype="multipart/form-data">
+    <form action="<?= base_url('index.php/customer/store_customer'); ?>" method="post" enctype="multipart/form-data">
         <input type="hidden" name="group_id" value="<?= $group_id; ?>">
 
         <!-- Customer Name Field -->
@@ -81,6 +81,6 @@
         
         <!-- Form Submit and Cancel Buttons -->
         <button type="submit" class="btn btn-primary">Add Customer</button>
-        <a href="<?= base_url('customer/group_details/' . $group_id); ?>" class="btn btn-secondary">Cancel</a>
+        <a href="<?= base_url('index.php/customer/group_details/' . $group_id); ?>" class="btn btn-secondary">Cancel</a>
     </form>
 </div>

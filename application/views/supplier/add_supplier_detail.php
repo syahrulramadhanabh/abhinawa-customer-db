@@ -1,7 +1,7 @@
 <div class="container-fluid">
     <h2>Add Supplier Detail for <?= $supplier->nama_supplier ?></h2>
     <?= validation_errors(); ?>
-    <?= form_open_multipart('supplier/add_supplier_detail/' . $supplier->kdsupplier); ?>
+    <?= form_open_multipart('index.php/supplier/add_supplier_detail/' . $supplier->kdsupplier); ?>
 
     <div class="mb-3">
         <label for="cid_supplier" class="form-label">CID Supplier</label>

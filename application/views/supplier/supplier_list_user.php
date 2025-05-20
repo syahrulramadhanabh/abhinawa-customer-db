@@ -16,7 +16,7 @@
                         <td><?= $supplier->kdsupplier ?></td>
                         <td><?= $supplier->nama_supplier ?></td>
                         <td>
-                            <a href="<?= site_url('supplier/details/' . $supplier->kdsupplier) ?>" class="btn btn-info btn-sm">View Details</a>
+                            <a href="<?= site_url('index.php/supplier/details/' . $supplier->kdsupplier) ?>" class="btn btn-info btn-sm">View Details</a>
                         </td>
                     </tr>
                 <?php endforeach; ?>
