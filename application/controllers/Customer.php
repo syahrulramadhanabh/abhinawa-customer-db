@@ -76,26 +76,34 @@ public function index() {
             $this->load->view('template/footer', $data);
         }        
     
-        public function add_customer($group_id = null) {
-            // Check if group_id is valid; if not, redirect or show error
+       public function add_customer($group_id = null) {
+            // Validasi group_id
             if (!$group_id || !is_numeric($group_id)) {
                 $this->session->set_flashdata('error', 'Invalid group ID specified.');
                 redirect('customer/index');
                 return;
             }
-        
-            // Fetch necessary data
-            $data['suppliers'] = $this->Customer_model->get_all_suppliers();
-            $data['service_types'] = $this->Customer_model->get_all_service_types();
-            $data['unused_cid_suppliers'] = $this->Customer_model->get_unused_cid_suppliers();
-            $data['group_id'] = $group_id;
-        
-            // Load the view and pass data
+
+            // Ambil data yang diperlukan
+            $data['suppliers']      = $this->Customer_model->get_all_suppliers();
+            $data['service_types']  = $this->Customer_model->get_all_service_types();
+
+            // Ambil cid_supplier per kdsupplier
+            $supplier_cid = [];
+            foreach ($data['suppliers'] as $supplier) {
+                $supplier_cid[$supplier->kdsupplier] = 
+                    $this->Customer_model->get_cid_suppliers($supplier->kdsupplier);
+            }
+            $data['supplier_cid'] = $supplier_cid;
+
+            $data['group_id']      = $group_id;
+
+            // Load views
             $this->load->view('template/header');
             $this->load->view('customer/add_customer', $data);
             $this->load->view('template/footer', $data);
-        }        
-        
+        }
+
         public function store_customer()
         {
             // Ambil data dari form
@@ -111,6 +119,7 @@ public function index() {
                 'service_type_id'     => $this->input->post('service_type_id'),
                 'start_date'          => $this->input->post('start_date'),
                 'end_date'            => $this->input->post('end_date'),
+                'sla'                 => $this->input->post('sla'),
             ];
         
             // Insert dan ambil ID
@@ -154,7 +163,6 @@ public function index() {
             $data['customer'] = $this->Customer_model->get_customer_by_id($customer_id);
             $data['suppliers'] = $this->Customer_model->get_all_suppliers();
             $data['service_types'] = $this->Customer_model->get_all_service_types();
-            $data['unused_cid_suppliers'] = $this->Customer_model->get_unused_cid_suppliers();
         
             // Load the edit customer view
             $this->load->view('template/header');

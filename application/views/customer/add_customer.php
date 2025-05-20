@@ -1,6 +1,6 @@
 <div class="container-fluid">
     <h2>Add New Customer</h2>
-    <form action="<?= base_url('index.php/customer/store_customer'); ?>" method="post" enctype="multipart/form-data">
+    <form action="<?= base_url('customer/store_customer'); ?>" method="post" enctype="multipart/form-data">
         <input type="hidden" name="group_id" value="<?= $group_id; ?>">
 
         <!-- Customer Name Field -->
@@ -23,20 +23,28 @@
         <div class="mb-3">
             <label for="cid_supp" class="form-label">SID Supplier</label>
             <select class="form-control" name="cid_supp" required>
-                <?php if (!empty($unused_cid_suppliers)): ?>
-                    <?php foreach ($unused_cid_suppliers as $cid_supplier): ?>
-                        <option value="<?= $cid_supplier->cid_supplier; ?>"><?= $cid_supplier->cid_supplier; ?></option>
-                    <?php endforeach; ?>
-                <?php else: ?>
-                    <option value="">No available SID suppliers</option>
-                <?php endif; ?>
+                <?php foreach ($suppliers as $supplier): ?>
+                    <?php if (!empty($supplier_cid[$supplier->kdsupplier])): ?>
+                        <?php foreach ($supplier_cid[$supplier->kdsupplier] as $cid): ?>
+                            <option value="<?= $cid->cid_supplier; ?>"><?= $cid->cid_supplier; ?></option>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <option value="">No available SID suppliers</option>
+                    <?php endif; ?>
+                <?php endforeach; ?>
             </select>
         </div>
+
 
         <!-- CID Abh Field -->
         <div class="mb-3">
             <label for="cid_abh" class="form-label">SID Customer</label>
             <input type="text" class="form-control" name="cid_abh" required>
+        </div>
+
+        <div class="mb-3">
+            <label for="sla" class="form-label">SLA Customer</label>
+            <input type="text" class="form-control" name="sla" required>
         </div>
 
         <!-- Service Type Selection -->
@@ -81,6 +89,6 @@
         
         <!-- Form Submit and Cancel Buttons -->
         <button type="submit" class="btn btn-primary">Add Customer</button>
-        <a href="<?= base_url('index.php/customer/group_details/' . $group_id); ?>" class="btn btn-secondary">Cancel</a>
+        <a href="<?= base_url('customer/group_details/' . $group_id); ?>" class="btn btn-secondary">Cancel</a>
     </form>
 </div>

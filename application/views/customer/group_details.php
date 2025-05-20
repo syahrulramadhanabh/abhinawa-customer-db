@@ -11,7 +11,7 @@
 
     <?php if ($role_id == 1): ?>
     <div class="mb-3">
-        <a href="<?= base_url('index.php/customer/add_customer/' . $group_id) ?>" class="btn btn-success">
+        <a href="<?= base_url('customer/add_customer/' . $group_id) ?>" class="btn btn-success">
             <i class="fa fa-plus"></i> Add New Customer
         </a>
         <a href="<?= base_url('customer/check_service_end_dates') ?>"
@@ -51,9 +51,16 @@
                         <tr>
                             <th>Customer</th>
                             <th>Supplier</th>
-                            <th>CID Supplier</th>
-                            <th>CID Customer</th>
+                            <th>SID Supplier</th>
+                            <th>SID Customer</th>
+                            <th>SLA Customer</th>
                             <th>Service Type</th>
+                            <th>Deskripsi</th>
+                            <th>Contact</th>
+                            <th>VLAN</th>
+                            <th>IP Address</th>
+                            <th>Prefix</th>
+                            <th>Cross Connect ID</th>
                             <th>SO</th>
                             <th>SDN</th>
                             <th>Topology</th>
@@ -108,6 +115,8 @@
 
                             <td><?= htmlspecialchars($cust->cid_supp) ?></td>
                             <td><?= htmlspecialchars($cust->cid_abh) ?></td>
+                             <!-- SLA Customer -->
+                            <td><?= htmlspecialchars($cust->sla) ?>%</td>
                             <td>
                                 <button class="btn btn-outline-primary btn-sm"
                                         data-bs-toggle="modal" data-bs-target="#fileModal"
@@ -115,6 +124,12 @@
                                     <?= htmlspecialchars($cust->service_type_name) ?>
                                 </button>
                             </td>
+                            <td><?= htmlspecialchars($cust->deskripsi) ?></td>
+                            <td><?= htmlspecialchars($cust->contact) ?></td>
+                            <td><?= htmlspecialchars($cust->vlan) ?></td>
+                            <td><?= htmlspecialchars($cust->ip_address) ?></td>
+                            <td><?= htmlspecialchars($cust->prefix) ?></td>
+                            <td><?= htmlspecialchars($cust->xconnect_id) ?></td>
                             <td>
                                 <button class="btn btn-outline-primary btn-sm"
                                         data-bs-toggle="modal" data-bs-target="#fileModal"
@@ -152,11 +167,11 @@
                                                     title="Notify Termination">
                                             <i class="fa fa-envelope"></i>
                                  </button>
-                                    <a href="<?= base_url('index.php/customer/edit_customer/' . $cust->id) ?>"
+                                    <a href="<?= base_url('customer/edit_customer/' . $cust->id) ?>"
                                        class="btn btn-secondary btn-sm">
                                         <i class="fa fa-edit"></i>
                                     </a>
-                                    <a href="<?= base_url('index.php/customer/delete_customer/' . $cust->id) ?>"
+                                    <a href="<?= base_url('customer/delete_customer/' . $cust->id) ?>"
                                        class="btn btn-danger btn-sm"
                                        onclick="return confirm('Delete <?= htmlspecialchars($cust->customer) ?>?');">
                                         <i class="fa fa-trash"></i>

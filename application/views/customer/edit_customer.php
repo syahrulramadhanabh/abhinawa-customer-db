@@ -20,14 +20,14 @@
         </div>
 
         <div class="mb-3">
-            <label for="cid_supp" class="form-label">CID Supplier</label>
+            <label for="cid_supp" class="form-label">SID Supplier</label>
             <select class="form-control" name="cid_supp" required>
                 <?php if (!empty($unused_cid_suppliers)): ?>
                     <?php foreach ($unused_cid_suppliers as $cid_supplier): ?>
                         <option value="<?= $cid_supplier->cid_supplier; ?>"><?= $cid_supplier->cid_supplier; ?></option>
                     <?php endforeach; ?>
                 <?php else: ?>
-                    <option value="">No available CID suppliers</option>
+                    <option value="">No available SID suppliers</option>
                 <?php endif; ?>
             </select>
         </div>
@@ -41,6 +41,11 @@
                     </option>
                 <?php endforeach; ?>
             </select>
+        </div>
+
+        <div class="mb-3">
+            <label for="sla" class="form-label">SLA Customer</label>
+            <input type="text" class="form-control" name="customer" value="<?= $customer->sla; ?>" required>
         </div>
 
         <div class="mb-3">
@@ -90,6 +95,6 @@
         </div>
 
         <button type="submit" class="btn btn-primary">Update Customer</button>
-        <a href="<?= base_url('index.php/customer/group_details/' . $customer->customer_group_id); ?>" class="btn btn-secondary">Cancel</a>
+        <a href="<?= base_url('customer/group_details/' . $customer->customer_group_id); ?>" class="btn btn-secondary">Cancel</a>
     </form>
 </div>

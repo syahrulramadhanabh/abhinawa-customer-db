@@ -17,7 +17,13 @@ class Customer_model extends CI_Model
     {
         return $this->db->get('customer_groups')->result();
     }
-
+    public function get_all_customers() {
+        $query = $this->db
+            ->select('*')           // termasuk kolom sla
+            ->from('customers')
+            ->get();
+        return $query->result();
+    }
     /**
      * Ambil semua customer dalam satu grup beserta info tambahan
      *
@@ -86,10 +92,20 @@ class Customer_model extends CI_Model
      *
      * @return array
      */
-    public function get_all_suppliers()
-    {
-        return $this->db->get('suppliers')->result();
-    }
+            public function get_all_suppliers() {
+                $this->db->select('kdsupplier, nama_supplier');
+                $query = $this->db->get('suppliers');
+                return $query->result();
+            }
+
+            public function get_cid_suppliers($kdsupplier) {
+                $this->db->select('cid_supplier');
+                $this->db->where('kdsupplier', $kdsupplier);
+                $query = $this->db->get('supplier_detail');
+                return $query->result();
+            }
+
+
 
     /**
      * Ambil semua jenis layanan
